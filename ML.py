@@ -18,7 +18,7 @@ class Node():
 class DecisionTreeClassifier():
     def __init__(self, minSampleSplit = 5, maxDepth = 7):
         self.root = None
-        self.minSampleSplit = minSampleSplit 
+        self.minSampleSplit = minSampleSplit #if minsamplesplit is low => tree will be overfitting, high accuracy for train data but low for a new test data
         self.maxDepth = maxDepth
 
     def buildTree(self, data, currentDepth=0):
@@ -26,7 +26,7 @@ class DecisionTreeClassifier():
         numOfSample, numOfFeature = np.shape(featureCol)
         #splitting
         if numOfSample >= self.minSampleSplit and currentDepth <= self.maxDepth:
-            bestSplit = self.getBestSplit(data, numOfSample, numOfFeature) 
+            bestSplit = self.getBestSplit(data, numOfSample, numOfFeature) # chi can numOfFeature, k can num of sample
             if bestSplit is None or "InformationGain" not in bestSplit or bestSplit["InformationGain"] <= 0:
                 return Node(value=self.calculateLeafValue(label))
             if bestSplit["InformationGain"]>0:
@@ -45,10 +45,11 @@ class DecisionTreeClassifier():
         for featureIndex in range(numOfFeature):
             featureValue = data[:, featureIndex]
             possibleThreshold = np.unique(featureValue)
-
+# lấy ra các giá trị KHÁC NHAU (không trùng lặp) trong một mảng
+# và sắp xếp chúng theo thứ tự tăng dần.
             for threshold in possibleThreshold:
                 dataLeft, dataRight = self.split(data, featureIndex, threshold)
-
+                #now calculate infor gain
                 if len(dataLeft) > 0 and len(dataRight) > 0:
                     label, leftlabel, rightLable = data[:,-1], dataLeft[:,-1], dataRight[:,-1]
                     currentInfoGain = self.informationGain(label, leftlabel, rightLable)
@@ -64,12 +65,14 @@ class DecisionTreeClassifier():
         return bestSplit
     
     def split(self, data, featureIndex, threshold):
-
+        #row for row in data
+        #"Duyệt từng dòng trong data,
+        #nếu giá trị tại featureIndex thỏa điều kiện thì giữ lại"
         dataLeft = np.array([row for row in data if row[featureIndex] <= threshold])
         dataRight = np.array([row for row in data if row[featureIndex]>threshold])
 
         return dataLeft, dataRight
-
+    # can name parent = total
     def informationGain(self, parent, leftChild, rightChild):
         leftPossibility = len(leftChild) / len(parent)
         rightPossibility = len(rightChild) / len(parent)
@@ -99,7 +102,18 @@ class DecisionTreeClassifier():
     def predict(self, X):        
         preditions = [self.makePrediction(child, self.root) for child in X]
         return preditions
+# for child in X
 
+#X là ma trận nhiều dòng (mỗi dòng = 1 sample).
+
+#child là 1 sample, ví dụ:
+#[2.5, 1.7, 0.4]
+
+# self.makePrediction(child, self.root)
+
+#Gọi hàm dự đoán cho một sample.
+
+#tra ve list cac prediction
     def makePrediction(self, x, tree):
         if tree.value!=None: return tree.value 
         featureVal = x[tree.featureIndex]
@@ -119,9 +133,9 @@ class RandomForestClassifier():
             numOfSelectedFeatures = int(np.sqrt(numOfFeature))
             selectedFeatureIndex = random.sample(range(numOfFeature), numOfSelectedFeatures)
             selectedSampleIndex = np.random.choice(numOfSample, numOfSample, replace=True)
-            selectedFeatures = XData[:, selectedFeatureIndex] 
-            correspondingLabel = YData[selectedSampleIndex, :] 
-            finalXData = selectedFeatures[selectedSampleIndex, :] 
+            selectedFeatures = XData[:, selectedFeatureIndex] # chon cac features
+            correspondingLabel = YData[selectedSampleIndex, :] # label tuong ung cua cac sample
+            finalXData = selectedFeatures[selectedSampleIndex, :] # trong cac features da chon thi con sample => final data
             Tree = DecisionTreeClassifier(minSampleSplit=5, maxDepth=7)
             Tree.fit(finalXData, correspondingLabel)
             self.tree.append((Tree, selectedFeatureIndex))
@@ -133,14 +147,14 @@ class RandomForestClassifier():
                 Subsample = child[featureIndex].reshape(1, -1)
                 votes.append(tree.predict(Subsample)[0])
             count = Counter(votes)
-            majority = count.most_common(1)[0][0] 
+            majority = count.most_common(1)[0][0] # (1) la lay cap key value gia tri cao nhat, [0] la lay cap kv dau tien do co the co 2 cap kv, [0] la lay key cua cap do
             predictions.append(majority)
         return predictions
             
         
-data = pd.read_csv("test.csv") #USE THIS ONE IF YOUR DATA IS IN A .CSV FILE
 
-data = pd.DataFrame(PlantData) #USE THIS ONE IF YOUR DATA IS A list, dictionary, NumPy array, etc
+
+data = pd.DataFrame(PlantData)
 X = data.iloc[:, :-1].values
 Y = data.iloc[:, -1].values.reshape(-1,1)
 from sklearn.model_selection import train_test_split
@@ -149,7 +163,7 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.2, random_s
 classifier = DecisionTreeClassifier(minSampleSplit=5, maxDepth=7)
 classifier.fit(X_train, Y_train)
 
-Classifier = RandomForestClassifier(numberOfTree=100)
+Classifier = RandomForestClassifier(numberOfTree=50)
 Classifier.fit(X_train, Y_train)
 
 if __name__ == "__main__":
